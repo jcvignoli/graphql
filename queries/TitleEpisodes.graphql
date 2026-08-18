@@ -1,0 +1,29 @@
+query TitleEpisodes($id: ID!) {
+  title(id: $id) {
+    id
+    episodes {
+      seasons {
+        number
+      }
+      episodes(first: 10) {
+        edges {
+          node {
+            id
+            titleText {
+              text
+            }
+            releaseDate {
+              day
+              month
+              year
+            }
+            ratingsSummary {
+              aggregateRating
+              voteCount
+            }
+          }
+        }
+      }
+    }
+  }
+}

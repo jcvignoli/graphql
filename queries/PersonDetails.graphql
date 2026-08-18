@@ -1,0 +1,7 @@
+query GetPersonDetails($id: ID!) {
+  name(id: $id) {
+    id
+    nameText { text }
+    birthDate { dateComponents { year month day } }
+  }
+}

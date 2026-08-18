@@ -1,0 +1,16 @@
+query KeywordSearch($searchTerm: String!) {
+  mainSearch(first: 10, options: { searchTerm: $searchTerm, type: KEYWORD }) {
+    edges {
+      node {
+        entity {
+          ... on Keyword {
+            id
+            text {
+              text
+            }
+          }
+        }
+      }
+    }
+  }
+}

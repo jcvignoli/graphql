@@ -1,0 +1,8 @@
+query CompanyDetails($id: ID!) {
+  company(id: $id) {
+    id
+    companyText {
+      text
+    }
+  }
+}

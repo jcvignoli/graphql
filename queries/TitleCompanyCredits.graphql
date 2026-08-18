@@ -1,0 +1,20 @@
+query TitleCompanyCredits($id: ID!) {
+  title(id: $id) {
+    id
+    companyCredits(first: 10) {
+      edges {
+        node {
+          company {
+            id
+            companyText {
+              text
+            }
+          }
+          category {
+            text
+          }
+        }
+      }
+    }
+  }
+}

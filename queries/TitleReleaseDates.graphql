@@ -1,0 +1,21 @@
+query TitleReleaseDates($id: ID!) {
+  title(id: $id) {
+    id
+    releaseDates(first: 10) {
+      edges {
+        node {
+          country {
+            id
+            text
+          }
+          day
+          month
+          year
+          attributes {
+            text
+          }
+        }
+      }
+    }
+  }
+}

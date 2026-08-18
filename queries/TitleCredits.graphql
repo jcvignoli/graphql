@@ -1,0 +1,35 @@
+query TitleCredits($id: ID!) {
+  title(id: $id) {
+    id
+    credits(first: 20) {
+      edges {
+        node {
+          category {
+            text
+          }
+          name {
+            id
+            nameText {
+              text
+            }
+          }
+          ... on Cast {
+            characters {
+              name
+            }
+          }
+        }
+      }
+    }
+    directors: principalCredits(filter: { categories: ["director"] }) {
+      credits {
+        name {
+          id
+          nameText {
+            text
+          }
+        }
+      }
+    }
+  }
+}

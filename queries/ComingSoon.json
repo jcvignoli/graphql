@@ -1,0 +1,7 @@
+{
+  "type": "MOVIE",
+  "filter": false,
+  "region": "US",
+  "startDate": "2026-08-01",
+  "futureDate": "2026-12-31"
+}

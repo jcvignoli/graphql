@@ -1,0 +1,23 @@
+query TopTVShows {
+  topMeterTitles(first: 10) {
+    edges {
+      node {
+        id
+        titleText {
+          text
+        }
+        titleType {
+          text
+          id
+        }
+        releaseYear {
+          year
+        }
+        ratingsSummary {
+          aggregateRating
+          voteCount
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,18 @@
+query TitleRecommendations($id: ID!) {
+  title(id: $id) {
+    id
+    moreLikeThisTitles(first: 5) {
+      edges {
+        node {
+          id
+          titleText {
+            text
+          }
+          releaseYear {
+            year
+          }
+        }
+      }
+    }
+  }
+}

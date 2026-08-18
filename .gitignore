@@ -1,0 +1,11 @@
+cache/*
+!cache/.placeholder
+data/*
+!data/.placeholder
+vendor*
+*.env*
+log.txt
+node_modules
+tmp
+composer.lock
+package-lock.json

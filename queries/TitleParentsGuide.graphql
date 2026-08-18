@@ -1,0 +1,22 @@
+query TitleParentsGuide($id: ID!) {
+  title(id: $id) {
+    id
+    certificate {
+      rating
+      country {
+        id
+      }
+    }
+    parentsGuide {
+      guideItems(first: 5) {
+        edges {
+          node {
+            text {
+              plainText
+            }
+          }
+        }
+      }
+    }
+  }
+}

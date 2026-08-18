@@ -1,0 +1,13 @@
+query TitlePlotSynopsis($id: ID!) {
+  title(id: $id) {
+    id
+    plot {
+      plotText {
+        plainText
+      }
+      language {
+        id
+      }
+    }
+  }
+}

@@ -1,0 +1,19 @@
+query NameSearch($searchTerm: String!) {
+  mainSearch(first: 10, options: { searchTerm: $searchTerm, type: NAME }) {
+    edges {
+      node {
+        entity {
+          ... on Name {
+            id
+            nameText {
+              text
+            }
+            primaryImage {
+              url
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,39 @@
+query PersonBioFilmography($id: ID!) {
+  name(id: $id) {
+    id
+    nameText {
+      text
+    }
+    bio {
+      text {
+        plainText
+      }
+    }
+    height {
+      measurement {
+        value
+      }
+    }
+    birthLocation {
+      text
+    }
+    credits(first: 15) {
+      edges {
+        node {
+          title {
+            id
+            titleText {
+              text
+            }
+            releaseYear {
+              year
+            }
+          }
+          category {
+            text
+          }
+        }
+      }
+    }
+  }
+}

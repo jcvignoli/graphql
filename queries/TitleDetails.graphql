@@ -1,0 +1,9 @@
+query GetTitleDetails($id: ID!) {
+  title(id: $id) {
+    id
+    titleText { text }
+    releaseYear { year }
+    ratingsSummary { aggregateRating voteCount }
+    genres { genres { text } }
+  }
+}

@@ -1,0 +1,20 @@
+query TitleAkas($id: ID!) {
+  title(id: $id) {
+    id
+    akas(first: 10) {
+      edges {
+        node {
+          text
+          country {
+            id
+            text
+          }
+          language {
+            id
+            text
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,19 @@
+query Top250Movies {
+  topMeterTitles(first: 10) {
+    edges {
+      node {
+        id
+        titleText {
+          text
+        }
+        releaseYear {
+          year
+        }
+        ratingsSummary {
+          aggregateRating
+          voteCount
+        }
+      }
+    }
+  }
+}

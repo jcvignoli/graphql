@@ -1,0 +1,16 @@
+query CompanySearch($searchTerm: String!) {
+  mainSearch(first: 10, options: { searchTerm: $searchTerm, type: COMPANY }) {
+    edges {
+      node {
+        entity {
+          ... on Company {
+            id
+            companyText {
+              text
+            }
+          }
+        }
+      }
+    }
+  }
+}

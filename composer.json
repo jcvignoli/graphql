@@ -1,0 +1,14 @@
+{
+    "name": "jcvignoli/graphql",
+    "version": "1.0",
+    "require": {
+        "guzzlehttp/guzzle": "*",
+        "gmostafa/php-graphql-oqm": "*",
+        "webonyx/graphql-php": "^15.37"
+    },
+    "autoload": {
+        "psr-4": {
+            "GraphQL\\SchemaObject\\": "schema_object/"
+        }
+    }
+}

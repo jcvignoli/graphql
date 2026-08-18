@@ -1,0 +1,43 @@
+query ComingSoon(
+  $type: ComingSoonType!
+  $filter: Boolean
+  $region: String
+  $startDate: Date!
+  $futureDate: Date
+) {
+  comingSoon(
+    first: 10
+    comingSoonType: $type
+    disablePopularityFilter: $filter
+    regionOverride: $region
+    releasingOnOrAfter: $startDate
+    releasingOnOrBefore: $futureDate
+    sort: { sortBy: RELEASE_DATE, sortOrder: ASC }
+  ) {
+    edges {
+      node {
+        id
+        titleText {
+          text
+        }
+        releaseDate {
+          day
+          month
+          year
+        }
+        titleGenres {
+          genres {
+            genre {
+              text
+            }
+          }
+        }
+        primaryImage {
+          url
+          width
+          height
+        }
+      }
+    }
+  }
+}

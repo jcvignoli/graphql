@@ -1,0 +1,24 @@
+query TitleVideos($id: ID!) {
+  title(id: $id) {
+    id
+    primaryVideos(first: 5) {
+      edges {
+        node {
+          id
+          createdDate
+          name {
+            value
+          }
+          runtime {
+            value
+          }
+          thumbnail {
+            url
+            width
+            height
+          }
+        }
+      }
+    }
+  }
+}

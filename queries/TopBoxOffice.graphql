@@ -1,0 +1,23 @@
+query TopBoxOffice {
+  topMeterTitles(first: 10) {
+    edges {
+      node {
+        id
+        titleText {
+          text
+        }
+        meterRanking {
+          currentRank
+          rankChange {
+            changeDirection
+            difference
+          }
+        }
+        ratingsSummary {
+          aggregateRating
+          voteCount
+        }
+      }
+    }
+  }
+}

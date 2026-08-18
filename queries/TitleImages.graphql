@@ -1,0 +1,18 @@
+query TitleImages($id: ID!) {
+  title(id: $id) {
+    id
+    images(first: 10) {
+      edges {
+        node {
+          id
+          url
+          width
+          height
+          caption {
+            plainText
+          }
+        }
+      }
+    }
+  }
+}

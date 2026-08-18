@@ -1,0 +1,22 @@
+query TitleSearchAdvanced($searchTerm: String!) {
+  mainSearch(first: 10, options: { searchTerm: $searchTerm, type: TITLE }) {
+    edges {
+      node {
+        entity {
+          ... on Title {
+            id
+            titleText {
+              text
+            }
+            releaseYear {
+              year
+            }
+            titleType {
+              text
+            }
+          }
+        }
+      }
+    }
+  }
+}

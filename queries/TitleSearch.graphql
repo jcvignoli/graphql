@@ -1,0 +1,14 @@
+query SearchTitles($options: MainSearchOptions!) {
+  mainSearch(options: $options, first: 5) {
+    edges {
+      node {
+        entity {
+          ... on Title {
+            id
+            titleText { text }
+          }
+        }
+      }
+    }
+  }
+}

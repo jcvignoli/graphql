@@ -1,0 +1,19 @@
+{
+  "name": "imdb-schema-monitor",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "npx tsx --env-file=.emails.env inspect.ts"
+  },
+  "dependencies": {
+    "graphql": "*",
+    "nodemailer": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "tsx": "^4.23.12",
+    "typescript": "^7.0.2"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
+  }
+}
