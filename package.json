@@ -1,8 +1,8 @@
 {
-  "name": "imdb-schema-monitor",
+  "name": "GraphQL monitor",
   "version": "1.0.0",
   "scripts": {
-    "start": "npx tsx --env-file=.emails.env inspect.ts"
+    "start": "npx tsx inspect.ts"
   },
   "dependencies": {
     "graphql": "*",

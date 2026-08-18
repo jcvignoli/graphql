@@ -1,8 +1,9 @@
 import fs from "fs";
 import path from "path";
-import { QUERY_SUITE } from "./scripts/queries";
-
-import { sendAlertEmail } from "./scripts/send-email";
+import { QUERY_SUITE } from "./scripts/queries";		// Check queries in /queries
+import { existsSync } from 'node:fs';				// synchronous check
+import { sendAlertEmail } from "./scripts/send-email";		// Sending emails script
+import { styleText } from 'node:util';				// Change styles/colors in console.log()
 
 const BASELINE_FILE = path.join(__dirname, "data/imdb-baseline-all.json");
 
@@ -113,21 +114,24 @@ async function runQuerySuite() {
   const baselineSuiteShapes = JSON.parse(fs.readFileSync(BASELINE_FILE, "utf-8"));
   const allDiffs = findDiffs(baselineSuiteShapes, currentSuiteShapes);
 
-  console.log("\n--- Validation Results ---");
   if (allDiffs.length > 0) {
-    console.error("🚨 SCHEMA DRIFT DETECTED IN QUERY SUITE:");
+    console.error(styleText(['redBright', 'bold'],"🚨 SCHEMA DRIFT DETECTED IN QUERY SUITE:"));
     allDiffs.forEach((d) => console.error(`  • ${d}`));
 
-    // Send email alert
-    try {
-      await sendAlertEmail(allDiffs);
-    } catch (emailErr) {
-      console.error("❌ Failed to send alert email:", emailErr.message);
-    }
+    // Send an email only if .env file exists.
+    if (existsSync('.env')) {
 
+       // Send email alert
+       try {
+         await sendAlertEmail(allDiffs);
+       } catch (emailErr) {
+         console.error(styleText(['redBright', 'bold'],"❌ Failed to send alert email:", emailErr.message));
+       }
+    }
+    
     process.exit(1)
   } else {
-    console.log("✅ All queries in the suite match baseline shapes perfectly.");
+    console.log(styleText(['greenBright', 'bold'],"✅ All queries in the suite match baseline shapes perfectly."));
   }
 }
 

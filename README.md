@@ -2,18 +2,15 @@
 
 A comprehensive suite of tools designed to inspect, proxy, cache, export, and monitor the internal **IMDb GraphQL API**. 
 
-Built for the `lumiere-movies` project ecosystem, this toolkit overcomes IMDb's GraphQL introspection restrictions by recursively crawling API types, caching them locally, compiling a full `schema.graphql` Schema Definition Language (SDL) file, and continuously testing live API responses against stored baseline shapes to detect breaking changes.
+Built for the [Lumière WordPress Plugin](https://wordpress.org/plugins/lumiere-movies/) project ecosystem, this toolkit overcomes [IMDb's GraphQL API](https://api.graphql.imdb.com/) principal restriction: no documentation is ever provided.
 
 ---
 
 ## 🚀 Key Capabilities
 
-* **Introspection Proxying:** Intercepts standard GraphQL `__schema` queries and serves a dynamically assembled schema built from local type caches.
-* **Recursive Type Crawler (`iterativelyFetchTypes`):** Implements a Breadth-First Search (BFS) crawler in PHP starting at root types (`Query`, `Mutation`) to discover all nested types, input objects, interfaces, and enums.
-* **Disk Caching System:** Saves raw type definitions in `cache/` to eliminate runtime execution timeouts, minimize external HTTP calls, and enable offline schema browsing.
-* **SDL Exporter:** Compiles individual type JSON files into a standalone, readable `schema.graphql` file without requiring strict introspection validation.
-* **IDE Autocomplete & Tooling:** Connects seamlessly to GraphQL IDEs (Postman, Insomnia, Altair) and supports TypeScript SDK generation via `@graphql-codegen/cli`.
-* **TypeScript Schema Drift Detection:** Executes a production query suite against live IMDb endpoints, extracts primitive response shapes, compares them against a baseline snapshot (`data/imdb-baseline-all.json`), and fires email alerts when changes occur.
+* **Introspection Proxying:** It recursively crawls API types and cache them locally, enabling to set up a local API replacement that will act as a proxy and will accelarate your calls to IMDb.
+* **Schema output:** It can compiles a full Schema Definition Language (SDL) file (`schema.graphql` ).
+* **Changes in you saved queries:** It continuously test live API responses against stored baseline shapes to detect breaking changes (saved GraphQL queries files into queries). Executes a production query suite against live IMDb endpoints, extracts primitive response shapes, compares them against a baseline snapshot (`data/imdb-baseline-all.json`), and fires email alerts when changes occur.
 
 ---
 
@@ -34,31 +31,6 @@ Built for the `lumiere-movies` project ecosystem, this toolkit overcomes IMDb's 
 ├── log.txt                      # Audit and proxy execution log
 ├── composer.json                # PHP dependencies (GuzzleHttp, etc.)
 └── package.json                 # Node.js / TypeScript dependencies
-```
-
----
-
-## 🛠️ Installation & Setup
-
-### System Requirements
-* **PHP:** 7.4 or 8.x (with `curl` and `json` extensions enabled)
-* **Node.js:** 18+ (for native `fetch` support in TypeScript)
-* **Package Managers:** Composer & npm / pnpm
-
-### 1. Install Dependencies
-```bash
-# Install PHP dependencies
-composer install
-
-# Install Node.js & TypeScript dependencies
-npm install
-```
-
-### 2. Prepare Directory Permissions
-Ensure local cache and data directories exist and are writable:
-```bash
-mkdir -p cache data
-chmod 775 cache data
 ```
 
 ---
@@ -93,28 +65,15 @@ Configure your GraphQL client endpoint:
 
 ---
 
-## 🔍 Exploring the Schema & Building `lumiere-movies`
+## 🔍 Proxy: Exploring the Schema & Building
 
-Once the cache is populated, your local environment serves as a full-featured GraphQL gateway.
+Once the cache is populated, your local environment serves as a full-featured GraphQL gateway (Proxy).
 
-### 1. Explore in GraphQL IDEs
-Connect tools like **Postman**, **Insomnia**, or **Altair** directly to your proxy endpoint. Introspection responses are served instantly from disk cache, providing full documentation and query field autocomplete.
+### Proxy Live App Requests
 
-### 2. Generate TypeScript Types & Client SDKs
-Run GraphQL Code Generator (`@graphql-codegen/cli`) against your local proxy endpoint to automatically create strictly typed TypeScript interfaces for frontend consumption:
-```bash
-npx graphql-codegen --config codegen.yml
-```
+Point [Lumière WordPress Plugin](https://wordpress.org/plugins/lumiere-movies/) directly to `index.php`. Schema introspection queries will be handled locally in milliseconds from `cache/`, while actual data operations automatically proxy to `https://api.graphql.imdb.com` with required headers, and make full use of this accelerated endpoint.
 
-### 3. Build Precise Queries for `lumiere-movies`
-Inspect exact IMDb data structures to query rich media and metadata without guesswork:
-* **Posters & Backdrops:** Query high-resolution image URLs and aspect ratios.
-* **Cast & Crew Filmographies:** Extract detailed credit lists, character names, and job roles.
-* **Ratings & Reviews:** Access user ratings, review counts, and Metacritic scores.
-* **Search & Discovery:** Filter titles by genres, plot summaries, release date ranges, and keywords.
-
-### 4. Proxy Live App Requests
-Point your `lumiere-movies` application frontend directly to `index.php`. Schema introspection queries will be handled locally in milliseconds from `cache/`, while actual data operations automatically proxy to `https://api.graphql.imdb.com` with required headers (`User-Agent`, `x-imdb-client-name`).
+Connect also tools like **Postman**, **Insomnia**, or **Altair** directly to your proxy endpoint. Introspection responses are served instantly from disk cache, providing full documentation and query field autocomplete.
 
 ---
 
@@ -139,20 +98,9 @@ if (file_exists($cacheFileName) && !$forceRefresh) {
 }
 ```
 
-### Method C: Automatic Time-To-Live (TTL)
-Enforce cache expiration (e.g., 7 days) within `typeQuery()`:
-```php
-$maxAge = 7 * 86400; // 7 days in seconds
-if (file_exists($cacheFileName) && (time() - filemtime($cacheFileName) < $maxAge)) {
-    // Use cached definition
-} else {
-    // Re-fetch from IMDb API
-}
-```
-
 ---
 
-## 📜 Exporting a Standalone `schema.graphql` (SDL)
+## 📜 Export a Standalone `data/schema.graphql` (SDL)
 
 Convert all cached JSON type files into a clean, human-readable GraphQL Schema Definition Language (SDL) file:
 
@@ -172,6 +120,10 @@ php export-schema.php
 
 The TypeScript drift monitor tests live production GraphQL queries against IMDb's API to ensure response structures remain consistent over time.
 
+```bash
+npx ts-node inspect.ts
+```
+
 ### How It Works
 
 1. **Shape Extraction (`extractShape`):**
@@ -186,8 +138,14 @@ The TypeScript drift monitor tests live production GraphQL queries against IMDb'
 4. **Alerting & Failure Handling:**
    If drift is detected, the script outputs formatted error logs to `stderr`, sends an automated notification email via `sendAlertEmail()`, and exits with process code `1` (useful for CI/CD pipeline failures).
 
-### Running the Test Suite
-```bash
-npx ts-node inspect.ts
+Should you want to receive an automatised email if any query changed (cron job), create a .env with this completed values:
+
+```
+ALERT_RECIPIENT_EMAIL="reception@gmail.com"
+SMTP_PORT=465
+SECURE="true"
+SMTP_HOST=smtp.gmail.com
+SMTP_USER=noreply@gmail.com
+SMTP_PASS="mysecurepassword"	
 ```
 

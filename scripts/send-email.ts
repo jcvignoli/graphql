@@ -1,4 +1,17 @@
 import nodemailer from "nodemailer";
+import { styleText } from 'node:util';
+
+// Load .env file and make process.env available
+try {
+  process.loadEnvFile();
+} catch (error: any) {
+  if (error?.code !== 'ENOENT') {
+    // Re-throw unexpected errors (e.g., permission issues)
+    throw error;
+  }
+  // Optional: log a warning when running in local dev
+  console.warn(styleText(['redBright', 'bold'],'Warning: No .env file found. No email will be sent.'));
+}
 
 export async function sendAlertEmail(diffs) {
   // Configure SMTP transporter
