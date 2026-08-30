@@ -1,18 +1,81 @@
 <?php
 /**
+ * IMDb GraphQL Proxy API
+ *
+ * Overview:
+ * ---------
+ * This endpoint acts as a lightweight proxy to the IMDb GraphQL API (https://api.graphql.imdb.com)
+ * and manages local file-based caching for schema type queries under the `cache/` directory.
+ *
+ * How it works & Available Options:
+ * ---------------------------------
+ * 1. GET ?list_types=1
+ *    Returns a JSON object listing all cached type filenames in the `cache/` directory,
+ *    sorted in ascending order by file modification timestamp (`filemtime`, oldest first).
+ *    Used by `ImdbApiRefreshCache` for FIFO (First-In, First-Out) cache rotation.
+ *    Response: {"status": "ok", "types": ["TypeName1", "TypeName2", ...]}
+ *
+ * 2. GET ?type=TypeName&refresh=1
+ *    Bypasses local cache for a specific GraphQL type (`TypeName`), fetches the latest type definition
+ *    directly from IMDb's GraphQL API, overwrites `cache/TypeName`, and returns the JSON payload.
+ *    Response: {"status": "ok", "type": "TypeName", "data": {...}}
+ *
+ * 3. GET ?refresh=1
+ *    Forces a refresh when querying the schema, writing raw body responses directly to `cache/$typeName`.
+ *
+ * 4. POST (Standard GraphQL proxy request)
+ *    Forwards incoming JSON POST GraphQL queries directly to `https://api.graphql.imdb.com`,
+ *    returning the response headers and body. See q.php as an example.
+ *
  * Adapted from Tom Boothman
  * https://github.com/tboothman/imdbphp/tree/master/graphql
  */
-require_once 'vendor/autoload.php';
+
+require 'vendor/autoload.php';
 
 header( 'Content-Type: application/json' );
 
+// List all cached type names sorted by modification time (oldest first)
+if ( isset( $_GET['list_types'] ) ) {
+	$cacheDir    = 'cache';
+	$cachedFiles = [];
+	if ( is_dir( $cacheDir ) ) {
+		$files     = array_diff( scandir( $cacheDir ), [ '.', '..' ] );
+		$fileTimes = [];
+		foreach ( $files as $file ) {
+			$filePath = $cacheDir . '/' . $file;
+			if ( is_file( $filePath ) ) {
+				$fileTimes[ $file ] = filemtime( $filePath );
+			}
+		}
+		// Sort ascending by modification time (oldest first)
+		asort( $fileTimes );
+		$cachedFiles = array_keys( $fileTimes );
+	}
+	echo json_encode( [ 'status' => 'ok', 'types' => array_values( $cachedFiles ) ] );
+	return;
+}
+
+// Refresh a single type directly without traversing the entire schema
+if ( isset( $_GET['type'] ) && isset( $_GET['refresh'] ) ) {
+	$typeName = preg_replace( '/[^a-zA-Z0-9_]/', '', $_GET['type'] );
+	if ( $typeName !== '' ) {
+		$type = typeQuery( $typeName, true );
+		echo json_encode( [ 'status' => 'ok', 'type' => $typeName, 'data' => $type ] );
+		return;
+	}
+}
+
 $body = file_get_contents( 'php://input' );
+
+if ( $body === false ) {
+	echo 'input couldn\'t be accessed';
+	exit(1);
+}
 
 writelog( $body );
 
-// Place it right here:
-if (empty( trim( $body ) )) {
+if ( trim( $body ) === '' ) {
 	$body = json_encode(
 		[
 			'query' => 'query { __schema { queryType { name } } }',
@@ -21,7 +84,7 @@ if (empty( trim( $body ) )) {
 }
 
 // Override request for schema with a custom response
-if (strpos( $body, '__schema' ) !== false) {
+if ($body !== false && strpos( $body, '__schema' ) !== false) {
 	$responseBody = [
 		'data' => [
 			'__schema' => [
@@ -47,10 +110,11 @@ foreach ($res->getHeaders() as $name => $values) {
 
 echo $res->getBody();
 
-function graphqlRequest( $body ) {
+/** @param array<string, string>|string $body */
+function graphqlRequest( array|string $body ): \Psr\Http\Message\ResponseInterface {
 	$client = new \GuzzleHttp\Client(
 		[
-			'timeout'  => 10.0, // Timeout after 10 seconds per request
+			'timeout' => 10.0,
 		]
 	);
 
@@ -68,13 +132,14 @@ function graphqlRequest( $body ) {
 	);
 }
 
-function iterativelyFetchTypes( array $seedTypes ) {
+/** @return stdClass[] */
+function iterativelyFetchTypes( array $seedTypes ): array {
 	$todo = $seedTypes;
 	$done = [];
 	$result = [];
 
 	$addToQueue = function ( $newType ) use ( &$todo, &$done ) {
-		if ( ! in_array( $newType, $done ) && ! in_array( $newType, $todo )) {
+		if ( ! in_array( $newType, $done, true ) && ! in_array( $newType, $todo, true )) {
 			$todo[] = $newType;
 		}
 	};
@@ -84,7 +149,7 @@ function iterativelyFetchTypes( array $seedTypes ) {
 		$done[] = $typeName;
 		$type = typeQuery( $typeName );
 
-		$recurseTypeNames = function ( $src ) use ( $addToQueue ) {
+		$recurseTypeNames = function ( stdClass $src ) use ( $addToQueue ) {
 			if (isset( $src->name ) && $src->name !== null) {
 				$addToQueue( $src->name );
 			}
@@ -142,9 +207,10 @@ function iterativelyFetchTypes( array $seedTypes ) {
 
 /**
  * @param string $typeName
- * @return \stdClass
+ * @param bool $forceRefresh
+ * @return stdClass
  */
-function typeQuery( $typeName ) {
+function typeQuery( string $typeName, bool $forceRefresh = false ): stdClass {
 	$query = <<<EOF
 query Type(\$type: String!) {
   __type(name: \$type) {
@@ -243,7 +309,7 @@ EOF;
 		mkdir( 'cache', 0777, true );
 	}
 
-	$forceRefresh = isset( $_GET['refresh'] );
+	$forceRefresh = $forceRefresh || isset( $_GET['refresh'] );
 	$cacheFileName = "cache/$typeName";
 
 	if (file_exists( $cacheFileName ) && ! $forceRefresh) {
@@ -260,6 +326,6 @@ EOF;
 	return $json->data->__type;
 }
 
-function writelog( $logLine ) {
+function writelog( string $logLine ): void {
 	file_put_contents( 'log.txt', $logLine . "\n", FILE_APPEND );
 }
