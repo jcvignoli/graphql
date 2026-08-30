@@ -61,6 +61,12 @@ if ( isset( $_GET['type'] ) && isset( $_GET['refresh'] ) ) {
 	$typeName = preg_replace( '/[^a-zA-Z0-9_]/', '', $_GET['type'] );
 	if ( $typeName !== '' ) {
 		$type = typeQuery( $typeName, true );
+		// Upstream (IMDb) failure
+		if ( $type === null ) {
+			http_response_code( 502 );
+			echo json_encode( [ 'status' => 'failed', 'type' => $typeName, 'data' => null ] );
+			return;
+		}
 		echo json_encode( [ 'status' => 'ok', 'type' => $typeName, 'data' => $type ] );
 		return;
 	}
