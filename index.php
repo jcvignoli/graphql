@@ -31,7 +31,7 @@
  * https://github.com/tboothman/imdbphp/tree/master/graphql
  */
 
-require 'vendor/autoload.php';
+require __DIR__ . '/vendor/autoload.php';
 
 header( 'Content-Type: application/json' );
 
@@ -146,8 +146,12 @@ function iterativelyFetchTypes( array $seedTypes ): array {
 
 	while (count( $todo )) {
 		$typeName = array_shift( $todo );
-		$done[] = $typeName;
-		$type = typeQuery( $typeName );
+		$done[]    = $typeName;
+		$type      = typeQuery( $typeName );
+
+		if ( ! $type ) {
+			continue;
+		}
 
 		$recurseTypeNames = function ( stdClass $src ) use ( $addToQueue ) {
 			if (isset( $src->name ) && $src->name !== null) {
@@ -208,9 +212,9 @@ function iterativelyFetchTypes( array $seedTypes ): array {
 /**
  * @param string $typeName
  * @param bool $forceRefresh
- * @return stdClass
+ * @return stdClass|null
  */
-function typeQuery( string $typeName, bool $forceRefresh = false ): stdClass {
+function typeQuery( string $typeName, bool $forceRefresh = false ): ?stdClass {
 	$query = <<<EOF
 query Type(\$type: String!) {
   __type(name: \$type) {
@@ -222,44 +226,33 @@ fragment FullType on __Type {
       kind
       name
       description
-
       fields(includeDeprecated: true) {
         name
         description
-        args {
-          ...InputValue
-        }
-        type {
-          ...TypeRef
-        }
+        args { ...InputValue }
+        type { ...TypeRef }
         isDeprecated
         deprecationReason
       }
-      inputFields {
-        ...InputValue
-      }
-      interfaces {
-        ...TypeRef
-      }
+      inputFields { ...InputValue }
+      interfaces { ...TypeRef }
       enumValues(includeDeprecated: true) {
         name
         description
         isDeprecated
         deprecationReason
       }
-      possibleTypes {
-        ...TypeRef
-      }
-    }
+      possibleTypes { ...TypeRef }
+}
 
-    fragment InputValue on __InputValue {
+fragment InputValue on __InputValue {
       name
       description
       defaultValue
       type { ...TypeRef }
-    }
+}
 
-    fragment TypeRef on __Type {
+fragment TypeRef on __Type {
       kind
       name
       ofType {
@@ -294,38 +287,52 @@ fragment FullType on __Type {
           }
         }
       }
-    }
+}
 EOF;
 
 	$request = [
 		'operationName' => 'Type',
-		'query' => $query,
-		'variables' => [
+		'query'         => $query,
+		'variables'     => [
 			'type' => $typeName,
 		],
 	];
 
-	if ( ! is_dir( 'cache' )) {
+	if ( ! is_dir( 'cache' ) ) {
 		mkdir( 'cache', 0777, true );
 	}
 
-	$forceRefresh = $forceRefresh || isset( $_GET['refresh'] );
+	$forceRefresh  = $forceRefresh || isset( $_GET['refresh'] );
 	$cacheFileName = "cache/$typeName";
 
-	if (file_exists( $cacheFileName ) && ! $forceRefresh) {
-		writelog( "Reading $typeName from cache" );
+	if ( file_exists( $cacheFileName ) && ! $forceRefresh ) {
 		$json = json_decode( file_get_contents( $cacheFileName ) );
-	} else {
-		writelog( "Fetching type $typeName from api" );
-		$res = graphqlRequest( json_encode( $request ) );
-		$rawBody = (string) $res->getBody();
-		file_put_contents( $cacheFileName, $rawBody );
-		$json = json_decode( $rawBody );
+		return $json->data->__type ?? null;
 	}
 
-	return $json->data->__type;
+	try {
+		$res     = graphqlRequest( json_encode( $request ) );
+		$rawBody = (string) $res->getBody();
+		
+		$json = json_decode( $rawBody );
+		if ( isset( $json->data->__type ) && $json->data->__type !== null ) {
+			file_put_contents( $cacheFileName, $rawBody );
+			return $json->data->__type;
+		}
+	} catch ( \GuzzleHttp\Exception\RequestException $e ) {
+		writelog( "Introspection failed for type: $typeName. Error: " . $e->getMessage() );
+		// Touch file on failure so FIFO rotation advances to the next batch
+		if ( file_exists( $cacheFileName ) ) {
+			touch( $cacheFileName );
+		}
+	}
+
+	return null;
 }
 
+/**
+ * Write log
+ */
 function writelog( string $logLine ): void {
-	file_put_contents( 'log.txt', $logLine . "\n", FILE_APPEND );
+	file_put_contents( __DIR__ . '/log.txt', $logLine . "\n", FILE_APPEND );
 }
