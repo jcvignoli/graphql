@@ -1,6 +1,14 @@
-<?php
+<?php declare( strict_types = 1 );
+/**
+ * Query test
+ */
+require_once __DIR__ . '/vendor/autoload.php';
 
-$endpoint = 'https://local.lumiere/graphql/';
+use jcvignoli\Graphql\Env;
+
+// Load environment variables
+Env::load( __DIR__ );
+$endpoint = $_ENV['LOCAL_HOST'] ?? null;
 
 $query = '
 query GetTitleReleaseDates($id: ID!) {

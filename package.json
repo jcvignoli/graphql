@@ -1,6 +1,5 @@
 {
   "name": "GraphQL monitor",
-  "version": "1.0.0",
   "scripts": {
     "start": "npx tsx inspect.ts"
   },

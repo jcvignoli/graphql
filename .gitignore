@@ -1,7 +1,7 @@
 data/*
 !data/.placeholder
 vendor*
-*.env*
+*.env
 log.txt
 node_modules
 tmp
