@@ -116,6 +116,57 @@ foreach ($res->getHeaders() as $name => $values) {
 
 echo $res->getBody();
 
+/**
+ * Extract incoming headers to forward to IMDb's GraphQL API.
+ * Forwarding client headers (x-imdb-*, accept-language, user-agent, etc.) ensures localized text
+ * (titleText, nameText, etc.) matches the requesting client's locale and context.
+ *
+ * @return array<string, string>
+ */
+function getForwardableHeaders(): array {
+	$headers = [];
+
+	if ( function_exists( 'getallheaders' ) ) {
+		$all = getallheaders();
+		if ( is_array( $all ) ) {
+			foreach ( $all as $k => $v ) {
+				$headers[ strtolower( (string) $k ) ] = (string) $v;
+			}
+		}
+	}
+
+	foreach ( $_SERVER as $key => $value ) {
+		if ( str_starts_with( $key, 'HTTP_' ) ) {
+			$headerName             = strtolower( str_replace( '_', '-', substr( $key, 5 ) ) );
+			$headers[ $headerName ] = (string) $value;
+		}
+	}
+
+	// Always default required headers if not explicitly supplied by client
+	$defaultHeaders = [
+		'content-type'       => 'application/json',
+		'user-agent'         => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+		'x-imdb-client-name' => 'imdb-web-next-localized',
+	];
+
+	// Forward client headers starting with 'x-imdb-', 'accept-language', or specific allowed headers
+	$forwardable = [
+		'content-type',
+		'user-agent',
+		'accept-language',
+		'authorization',
+	];
+
+	$finalHeaders = [];
+	foreach ( $headers as $k => $v ) {
+		if ( in_array( $k, $forwardable, true ) || str_starts_with( $k, 'x-imdb-' ) ) {
+			$finalHeaders[ $k ] = $v;
+		}
+	}
+
+	return array_merge( $defaultHeaders, $finalHeaders );
+}
+
 /** @param array<string, string>|string $body */
 function graphqlRequest( array|string $body ): \Psr\Http\Message\ResponseInterface {
 	$client = new \GuzzleHttp\Client(
@@ -124,16 +175,14 @@ function graphqlRequest( array|string $body ): \Psr\Http\Message\ResponseInterfa
 		]
 	);
 
+	$headers = getForwardableHeaders();
+
 	return $client->request(
 		'POST',
 		'https://api.graphql.imdb.com',
 		[
-			'body' => is_array( $body ) ? json_encode( $body ) : $body,
-			'headers' => [
-				'Content-Type' => 'application/json',
-				'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-				'x-imdb-client-name' => 'imdb-web-next-localized',
-			],
+			'body'    => is_array( $body ) ? json_encode( $body ) : $body,
+			'headers' => $headers,
 		]
 	);
 }
