@@ -1,4 +1,5 @@
-<?php declare( strict_types = 1 );
+<?php
+declare( strict_types = 1 );
 /**
  * Query test
  */
@@ -8,7 +9,7 @@ use jcvignoli\Graphql\Env;
 
 // Load environment variables
 Env::load( __DIR__ );
-$endpoint = $_ENV['LOCAL_HOST'] ?? null;
+$endpoint = $_ENV['LOCAL_HOST'] ?? getenv( 'LOCAL_HOST' ) ?: null;
 
 $query = '
 query GetTitleReleaseDates($id: ID!) {

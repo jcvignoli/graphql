@@ -1,4 +1,5 @@
 <?php
+declare( strict_types = 1 );
 
 echo "Building schema.graphql from cached types...\n";
 

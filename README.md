@@ -24,6 +24,7 @@ Built for the [Lumière WordPress Plugin](https://wordpress.org/plugins/lumiere-
 ├── scripts/
 │   ├── queries.ts               # Production GraphQL queries and variable definitions (QUERY_SUITE)
 │   └── send-email.ts            # Email alert dispatcher (sendAlertEmail)
+├── src/			 # PHP Classes
 ├── export-schema.php            # Standalone SDL generator script (creates schema.graphql)
 ├── index.php                    # PHP proxy server & recursive BFS crawler
 ├── validate-schema.ts           # TypeScript schema drift monitor & shape comparator
@@ -121,7 +122,7 @@ php export-schema.php
 The TypeScript drift monitor tests live production GraphQL queries against IMDb's API to ensure response structures remain consistent over time.
 
 ```bash
-npx ts-node inspect.ts
+npx tsx inspect.ts
 ```
 
 ### How It Works
