@@ -194,10 +194,8 @@ function getForwardableHeaders(): array {
 
 	if ( function_exists( 'getallheaders' ) ) {
 		$all = getallheaders();
-		if ( is_array( $all ) ) {
-			foreach ( $all as $k => $v ) {
-				$headers[ strtolower( (string) $k ) ] = (string) $v;
-			}
+		foreach ( $all as $k => $v ) {
+			$headers[ strtolower( (string) $k ) ] = (string) $v;
 		}
 	}
 

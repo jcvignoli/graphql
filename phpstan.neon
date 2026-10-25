@@ -5,7 +5,8 @@ includes:
     - vendor/phpstan/phpstan-deprecation-rules/rules.neon
 parameters:
     level: 8 #max or 9 for highest level
-    scanFiles:
+    bootstrapFiles:
+        - web/vendor/autoload.php
     tmpDir: tmp/cache/phpstan
     paths:
         - web

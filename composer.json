@@ -15,8 +15,8 @@
         }
     },
     "scripts": {
-        "phpcsci": "vendor/bin/phpcs --warning-severity=0 --extensions=php src",
-        "phpstanci": "vendor/bin/phpstan analyse --no-progress --error-format=github -c tests/phpstan.ci.neon",
+       "phpcsci": "vendor/bin/phpcs --standard=phpcs.xml.dist web",
+        "phpstanci": "vendor/bin/phpstan analyse --no-progress -c phpstan.neon",
         "phanci": "vendor/bin/phan",
         "static-code-analyser": ["@phpcsci","@phpstanci","@phanci"],
         "post-update-cmd": [

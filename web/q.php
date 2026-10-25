@@ -1,7 +1,12 @@
 <?php
 declare( strict_types = 1 );
 /**
- * Query test
+ * Query test helper script.
+ *
+ * Executes a test GraphQL query against the local IMDb proxy endpoint.
+ *
+ * @package jcvignoli\graphql
+ * @see \jcvignoli\Graphql\Env
  */
 require_once __DIR__ . '/vendor/autoload.php';
 
