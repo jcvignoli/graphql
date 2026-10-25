@@ -5,6 +5,7 @@
 	<description>GraphQL using WordPress rules</description>
 
 	<file>web</file>
+	<exclude-pattern>web/vendor/*</exclude-pattern>
 	
 	<!-- INFO: get list of rules availabe for PSR12: "./vendor/bin/phpcs -e DOUBLEDASHstandard=PSR12" -->
 

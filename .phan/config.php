@@ -62,6 +62,7 @@ return array(
 	// your application should be included in this list.
 	'directory_list'            => array(
 		'web/',
+		'vendor/',
 	),
 
 	// A directory list that defines files that will be excluded
@@ -76,6 +77,8 @@ return array(
 	//       should be added to the `directory_list` as
 	//       to `exclude_analysis_directory_list`.
 	'exclude_analysis_directory_list' => array(
+		'vendor/',
+		'web/vendor/',
 	),
 
 	// Not developped files

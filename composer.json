@@ -1,11 +1,5 @@
 {
     "name": "jcvignoli/graphql",
-    "require": {
-        "guzzlehttp/guzzle": "@stable",
-        "gmostafa/php-graphql-oqm": "@stable",
-        "vlucas/phpdotenv": "@stable",
-        "webonyx/graphql-php": "@stable"
-    },
     "require-dev": {
         "dealerdirect/phpcodesniffer-composer-installer": "@stable",
         "squizlabs/php_codesniffer": "@stable",
@@ -17,9 +11,17 @@
     },
     "autoload": {
         "psr-4": {
-            "GraphQL\\SchemaObject\\": "schema_object/",
-            "jcvignoli\\Graphql\\": "web/class/"
+            "GraphQL\\SchemaObject\\": "schema_object/"
         }
+    },
+    "scripts": {
+        "phpcsci": "vendor/bin/phpcs --warning-severity=0 --extensions=php src",
+        "phpstanci": "vendor/bin/phpstan analyse --no-progress --error-format=github -c tests/phpstan.ci.neon",
+        "phanci": "vendor/bin/phan",
+        "static-code-analyser": ["@phpcsci","@phpstanci","@phanci"],
+        "post-update-cmd": [
+            "cd ./web && composer update"
+        ]
     },
     "config": {
         "allow-plugins": {

@@ -9,3 +9,6 @@ parameters:
     tmpDir: tmp/cache/phpstan
     paths:
         - web
+    excludePaths:
+      analyseAndScan:
+        - web/vendor/

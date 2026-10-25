@@ -1,0 +1,14 @@
+{
+    "name": "jcvignoli/graphql",
+    "require": {
+        "guzzlehttp/guzzle": "@stable",
+        "gmostafa/php-graphql-oqm": "@stable",
+        "vlucas/phpdotenv": "@stable",
+        "webonyx/graphql-php": "@stable"
+    },
+    "autoload": {
+        "psr-4": {
+            "jcvignoli\\Graphql\\": "class/"
+        }
+    }
+}

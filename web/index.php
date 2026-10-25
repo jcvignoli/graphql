@@ -32,7 +32,7 @@ declare( strict_types = 1 );
  * https://github.com/tboothman/imdbphp/tree/master/graphql
  */
 
-require dirname( __DIR__ ) . '/vendor/autoload.php';
+require __DIR__ . '/vendor/autoload.php';
 
 use jcvignoli\Graphql\Env;
 use GuzzleHttp\Client;
@@ -64,7 +64,7 @@ if ( isset( $_GET['list_types'] ) ) {
 	echo json_encode(
 		array(
 			'status' => 'ok',
-			'types'  => array_values( $cachedFiles ),
+			'types'  => $cachedFiles,
 		)
 	);
 	return;
@@ -73,7 +73,7 @@ if ( isset( $_GET['list_types'] ) ) {
 // Refresh a single type directly without traversing the entire schema
 if ( isset( $_GET['type'] ) && isset( $_GET['refresh'] ) ) {
 	$typeName = preg_replace( '/[^a-zA-Z0-9_]/', '', $_GET['type'] );
-	if ( $typeName !== '' ) {
+	if ( is_string( $typeName ) && $typeName !== '' ) {
 		$lastError  = null;
 		$lastErrors = null;
 		$type       = typeQuery( $typeName, true, $lastError, $lastErrors );
@@ -105,25 +105,28 @@ if ( isset( $_GET['type'] ) && isset( $_GET['refresh'] ) ) {
 	}
 }
 
-$body = file_get_contents( 'php://input' );
+$rawInput = file_get_contents( 'php://input' );
 
-if ( $body === false ) {
+if ( $rawInput === false ) {
 	echo 'input couldn\'t be accessed';
 	exit( 1 );
 }
 
+$body = $rawInput;
+
 writelog( $body );
 
 if ( trim( $body ) === '' ) {
-	$body = json_encode(
+	$encodedQuery = json_encode(
 		array(
 			'query' => 'query { __schema { queryType { name } } }',
 		)
 	);
+	$body         = is_string( $encodedQuery ) ? $encodedQuery : '';
 }
 
 // Override request for schema with a custom response
-if ($body !== false && strpos( $body, '__schema' ) !== false) {
+if ( strpos( $body, '__schema' ) !== false ) {
 	$schemaErrors    = array();
 	$queryTypeError  = null;
 	$queryTypeErrors = null;
@@ -151,12 +154,12 @@ if ($body !== false && strpos( $body, '__schema' ) !== false) {
 		),
 	);
 
-	if ( ! empty( $schemaErrors ) ) {
+	if ( $schemaErrors !== array() ) {
 		$uniqueErrors = array();
 		$seen         = array();
 		foreach ( $schemaErrors as $err ) {
 			$msg = is_array( $err ) ? ( $err['message'] ?? json_encode( $err ) ) : ( ( is_object( $err ) && isset( $err->message ) ) ? $err->message : json_encode( $err ) );
-			if ( ! isset( $seen[ $msg ] ) ) {
+			if ( is_string( $msg ) && ! isset( $seen[ $msg ] ) ) {
 				$seen[ $msg ]   = true;
 				$uniqueErrors[] = $err;
 			}
@@ -170,19 +173,20 @@ if ($body !== false && strpos( $body, '__schema' ) !== false) {
 }
 
 $res = graphqlRequest( $body );
-foreach ($res->getHeaders() as $name => $values) {
-	foreach ($values as $value) {
+foreach ( $res->getHeaders() as $name => $values ) {
+	foreach ( $values as $value ) {
 		header( sprintf( '%s: %s', $name, $value ), false );
 	}
 }
 
-echo $res->getBody();
+echo (string) $res->getBody();
 
 /**
  * Extract incoming headers to forward to IMDb's GraphQL API.
  * Forwarding client headers (x-imdb-*, accept-language, user-agent, etc.) ensures localized text
  * (titleText, nameText, etc.) matches the requesting client's locale and context.
  *
+ * @see graphqlRequest
  * @return array<string, string>
  */
 function getForwardableHeaders(): array {
@@ -228,15 +232,22 @@ function getForwardableHeaders(): array {
 
 	$merged = array_merge( $defaultHeaders, $finalHeaders );
 
-	$imdbAuthToken = $_ENV['IMDB_AUTH_TOKEN'] ?? getenv( 'IMDB_AUTH_TOKEN' ) ?: null;
-	if ( empty( $merged['authorization'] ) && ! empty( $imdbAuthToken ) ) {
+	$envAuth       = getenv( 'IMDB_AUTH_TOKEN' );
+	$imdbAuthToken = $_ENV['IMDB_AUTH_TOKEN'] ?? ( is_string( $envAuth ) && $envAuth !== '' ? $envAuth : null );
+	if ( ( ! isset( $merged['authorization'] ) || $merged['authorization'] === '' ) && $imdbAuthToken !== null && $imdbAuthToken !== '' ) {
 		$merged['authorization'] = $imdbAuthToken;
 	}
 
 	return $merged;
 }
 
-/** @param array<string, string>|string $body */
+/**
+ * Perform GraphQL API request to upstream IMDb server.
+ *
+ * @see getForwardableHeaders
+ * @param array<string, string>|string $body Request payload body or array.
+ * @return ResponseInterface
+ */
 function graphqlRequest( array|string $body ): ResponseInterface {
 	$client = new Client(
 		array(
@@ -246,40 +257,47 @@ function graphqlRequest( array|string $body ): ResponseInterface {
 
 	$headers = getForwardableHeaders();
 
+	$encodedBody = is_array( $body ) ? json_encode( $body ) : $body;
+
 	return $client->request(
 		'POST',
 		'https://api.graphql.imdb.com',
 		array(
-			'body'    => is_array( $body ) ? json_encode( $body ) : $body,
+			'body'    => is_string( $encodedBody ) ? $encodedBody : '',
 			'headers' => $headers,
 		)
 	);
 }
 
 /**
- * @param array $seedTypes
- * @param array $schemaErrors Output/accumulated errors
+ * Recursively fetch type definitions for a schema.
+ *
+ * @see typeQuery
+ * @param array<int, string> $seedTypes
+ * @param array<mixed> $schemaErrors Output/accumulated errors
  * @return stdClass[]
  */
 function iterativelyFetchTypes( array $seedTypes, array &$schemaErrors = array() ): array {
-	$todo   = $seedTypes;
+	/** @var list<string> $todo */
+	$todo = $seedTypes;
+	/** @var list<string> $done */
 	$done   = array();
 	$result = array();
 
-	$addToQueue = function ( $newType ) use ( &$todo, &$done ) {
-		if ( ! in_array( $newType, $done, true ) && ! in_array( $newType, $todo, true )) {
+	$addToQueue = function ( string $newType ) use ( &$todo, &$done ): void {
+		if ( ! in_array( $newType, $done, true ) && ! in_array( $newType, $todo, true ) ) {
 			$todo[] = $newType;
 		}
 	};
 
-	while (count( $todo )) {
+	while ( $todo !== array() ) {
 		$typeName   = array_shift( $todo );
 		$done[]     = $typeName;
 		$lastError  = null;
 		$lastErrors = null;
 		$type       = typeQuery( $typeName, false, $lastError, $lastErrors );
 
-		if ( ! $type ) {
+		if ( $type === null ) {
 			if ( $lastErrors !== null ) {
 				foreach ( $lastErrors as $err ) {
 					$schemaErrors[] = $err;
@@ -290,20 +308,20 @@ function iterativelyFetchTypes( array $seedTypes, array &$schemaErrors = array()
 			continue;
 		}
 
-		$recurseTypeNames = function ( stdClass $src ) use ( $addToQueue ) {
-			if (isset( $src->name ) && $src->name !== null) {
+		$recurseTypeNames = function ( stdClass $src ) use ( $addToQueue ): void {
+			if ( isset( $src->name ) && is_string( $src->name ) ) {
 				$addToQueue( $src->name );
 			}
-			if (isset( $src->ofType ) && $src->ofType !== null) {
-				if (isset( $src->ofType->name ) && $src->ofType->name !== null) {
+			if ( isset( $src->ofType ) && $src->ofType instanceof stdClass ) {
+				if ( isset( $src->ofType->name ) && is_string( $src->ofType->name ) ) {
 					$addToQueue( $src->ofType->name );
 				}
-				if (isset( $src->ofType->ofType ) && $src->ofType->ofType !== null) {
-					if (isset( $src->ofType->ofType->name ) && $src->ofType->ofType->name !== null) {
+				if ( isset( $src->ofType->ofType ) && $src->ofType->ofType instanceof stdClass ) {
+					if ( isset( $src->ofType->ofType->name ) && is_string( $src->ofType->ofType->name ) ) {
 						$addToQueue( $src->ofType->ofType->name );
 					}
-					if (isset( $src->ofType->ofType->ofType ) && $src->ofType->ofType->ofType !== null) {
-						if (isset( $src->ofType->ofType->ofType->name ) && $src->ofType->ofType->ofType->name !== null) {
+					if ( isset( $src->ofType->ofType->ofType ) && $src->ofType->ofType->ofType instanceof stdClass ) {
+						if ( isset( $src->ofType->ofType->ofType->name ) && is_string( $src->ofType->ofType->ofType->name ) ) {
 							$addToQueue( $src->ofType->ofType->ofType->name );
 						}
 					}
@@ -311,33 +329,43 @@ function iterativelyFetchTypes( array $seedTypes, array &$schemaErrors = array()
 			}
 		};
 
-		if (isset( $type->fields ) && is_array( $type->fields )) {
-			foreach ($type->fields as $field) {
-				$recurseTypeNames( $field->type );
+		if ( isset( $type->fields ) && is_array( $type->fields ) ) {
+			foreach ( $type->fields as $field ) {
+				if ( $field instanceof stdClass && isset( $field->type ) && $field->type instanceof stdClass ) {
+					$recurseTypeNames( $field->type );
+				}
 
-				if (isset( $field->args ) && is_array( $field->args )) {
-					foreach ($field->args as $arg) {
-						$recurseTypeNames( $arg->type );
+				if ( $field instanceof stdClass && isset( $field->args ) && is_array( $field->args ) ) {
+					foreach ( $field->args as $arg ) {
+						if ( $arg instanceof stdClass && isset( $arg->type ) && $arg->type instanceof stdClass ) {
+							$recurseTypeNames( $arg->type );
+						}
 					}
 				}
 			}
 		}
 
-		if (isset( $type->interfaces ) && is_array( $type->interfaces )) {
-			foreach ($type->interfaces as $interface) {
-				$recurseTypeNames( $interface );
+		if ( isset( $type->interfaces ) && is_array( $type->interfaces ) ) {
+			foreach ( $type->interfaces as $interface ) {
+				if ( $interface instanceof stdClass ) {
+					$recurseTypeNames( $interface );
+				}
 			}
 		}
 
-		if (isset( $type->inputFields ) && is_array( $type->inputFields )) {
-			foreach ($type->inputFields as $inputFields) {
-				$recurseTypeNames( $inputFields->type );
+		if ( isset( $type->inputFields ) && is_array( $type->inputFields ) ) {
+			foreach ( $type->inputFields as $inputField ) {
+				if ( $inputField instanceof stdClass && isset( $inputField->type ) && $inputField->type instanceof stdClass ) {
+					$recurseTypeNames( $inputField->type );
+				}
 			}
 		}
 
-		if (isset( $type->possibleTypes ) && is_array( $type->possibleTypes )) {
-			foreach ($type->possibleTypes as $possibleTypes) {
-				$recurseTypeNames( $possibleTypes );
+		if ( isset( $type->possibleTypes ) && is_array( $type->possibleTypes ) ) {
+			foreach ( $type->possibleTypes as $possibleType ) {
+				if ( $possibleType instanceof stdClass ) {
+					$recurseTypeNames( $possibleType );
+				}
 			}
 		}
 
@@ -347,10 +375,14 @@ function iterativelyFetchTypes( array $seedTypes, array &$schemaErrors = array()
 }
 
 /**
- * @param string $typeName
- * @param bool $forceRefresh
- * @param string|null $lastError Output parameter for error message string
- * @param array|null $lastErrors Output parameter for GraphQL errors array
+ * Query type definition from IMDb or cache.
+ *
+ * @see graphqlRequest
+ * @see writelog
+ * @param string $typeName GraphQL type name to query.
+ * @param bool $forceRefresh True to force fetching from upstream.
+ * @param string|null $lastError Output parameter for error message string.
+ * @param array<mixed>|null $lastErrors Output parameter for GraphQL errors array.
  * @return stdClass|null
  */
 function typeQuery( string $typeName, bool $forceRefresh = false, ?string &$lastError = null, ?array &$lastErrors = null ): ?stdClass {
@@ -447,36 +479,47 @@ EOF;
 	$cacheFileName = "cache/$typeName";
 
 	if ( file_exists( $cacheFileName ) && ! $forceRefresh ) {
-		$json = json_decode( file_get_contents( $cacheFileName ) );
-		return $json->data->__type ?? null;
+		$cacheContent = file_get_contents( $cacheFileName );
+		if ( is_string( $cacheContent ) ) {
+			$json = json_decode( $cacheContent );
+			if ( $json instanceof stdClass && isset( $json->data ) && $json->data instanceof stdClass && isset( $json->data->__type ) && $json->data->__type instanceof stdClass ) {
+				return $json->data->__type;
+			}
+		}
+		return null;
 	}
 
 	try {
-		$res     = graphqlRequest( json_encode( $request ) );
-		$rawBody = (string) $res->getBody();
+		$reqBody = json_encode( $request );
+		if ( is_string( $reqBody ) ) {
+			$res     = graphqlRequest( $reqBody );
+			$rawBody = (string) $res->getBody();
 
-		$json = json_decode( $rawBody );
-		if ( isset( $json->data->__type ) && $json->data->__type !== null ) {
-			file_put_contents( $cacheFileName, $rawBody );
-			return $json->data->__type;
-		}
+			$json = json_decode( $rawBody );
+			if ( $json instanceof stdClass && isset( $json->data ) && $json->data instanceof stdClass && isset( $json->data->__type ) && $json->data->__type instanceof stdClass ) {
+				file_put_contents( $cacheFileName, $rawBody );
+				return $json->data->__type;
+			}
 
-		if ( isset( $json->errors ) && is_array( $json->errors ) && count( $json->errors ) > 0 ) {
-			$lastErrors = $json->errors;
-			$lastError  = $json->errors[0]->message ?? "Introspection failed for type: $typeName";
-		} else {
-			$lastError  = "Introspection failed for type: $typeName";
-			$lastErrors = array( array( 'message' => $lastError ) );
+			if ( $json instanceof stdClass && isset( $json->errors ) && is_array( $json->errors ) && count( $json->errors ) > 0 ) {
+				$lastErrors = $json->errors;
+				$firstErr   = $json->errors[0];
+				$lastError  = ( is_object( $firstErr ) && isset( $firstErr->message ) && is_string( $firstErr->message ) ) ? $firstErr->message : "Introspection failed for type: $typeName";
+			} else {
+				$lastError  = "Introspection failed for type: $typeName";
+				$lastErrors = array( array( 'message' => $lastError ) );
+			}
+			writelog( "Introspection failed for type: $typeName. Error: " . $lastError );
 		}
-		writelog( "Introspection failed for type: $typeName. Error: " . $lastError );
 	} catch ( \Throwable $e ) {
 		$errorMsg = $e->getMessage();
 		if ( $e instanceof RequestException && $e->hasResponse() && $e->getResponse() !== null ) {
 			$resBody = (string) $e->getResponse()->getBody();
 			$json    = json_decode( $resBody );
-			if ( isset( $json->errors ) && is_array( $json->errors ) && count( $json->errors ) > 0 ) {
+			if ( $json instanceof stdClass && isset( $json->errors ) && is_array( $json->errors ) && count( $json->errors ) > 0 ) {
 				$lastErrors = $json->errors;
-				$lastError  = $json->errors[0]->message ?? $errorMsg;
+				$firstErr   = $json->errors[0];
+				$lastError  = ( is_object( $firstErr ) && isset( $firstErr->message ) && is_string( $firstErr->message ) ) ? $firstErr->message : $errorMsg;
 			} else {
 				$lastError  = $errorMsg;
 				$lastErrors = array( array( 'message' => $lastError ) );
@@ -492,14 +535,14 @@ EOF;
 	if ( file_exists( $cacheFileName ) ) {
 		touch( $cacheFileName );
 		$cachedContent = file_get_contents( $cacheFileName );
-		if ( $cachedContent !== false && trim( $cachedContent ) !== '' ) {
+		if ( is_string( $cachedContent ) && trim( $cachedContent ) !== '' ) {
 			$json = json_decode( $cachedContent );
-			if ( isset( $json->data->__type ) && $json->data->__type !== null ) {
+			if ( $json instanceof stdClass && isset( $json->data ) && $json->data instanceof stdClass && isset( $json->data->__type ) && $json->data->__type instanceof stdClass ) {
 				$lastError  = null;
 				$lastErrors = null;
 				return $json->data->__type;
 			}
-			if ( isset( $json->name ) ) {
+			if ( $json instanceof stdClass && isset( $json->name ) ) {
 				$lastError  = null;
 				$lastErrors = null;
 				return $json;
@@ -511,7 +554,10 @@ EOF;
 }
 
 /**
- * Write log
+ * Write log entry to log file.
+ *
+ * @param string $logLine Log message string.
+ * @return void
  */
 function writelog( string $logLine ): void {
 	file_put_contents( __DIR__ . '/log.txt', $logLine . "\n", FILE_APPEND );

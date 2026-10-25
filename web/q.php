@@ -3,13 +3,14 @@ declare( strict_types = 1 );
 /**
  * Query test
  */
-require_once dirname( __DIR__ ) . '/vendor/autoload.php';
+require_once __DIR__ . '/vendor/autoload.php';
 
 use jcvignoli\Graphql\Env;
 
 // Load environment variables
 Env::load( __DIR__ );
-$endpoint = $_ENV['LOCAL_HOST'] ?? getenv( 'LOCAL_HOST' ) ?: null;
+$envHost  = getenv( 'LOCAL_HOST' );
+$endpoint = $_ENV['LOCAL_HOST'] ?? ( is_string( $envHost ) ? $envHost : '' );
 
 $query = '
 query GetTitleReleaseDates($id: ID!) {
@@ -37,7 +38,14 @@ $variables = array(
 	'id' => 'tt0120737',
 );
 
-$ch = curl_init( $endpoint );
+$ch       = curl_init( $endpoint );
+$postData = json_encode(
+	array(
+		'query'     => $query,
+		'variables' => $variables,
+	)
+);
+
 curl_setopt_array(
 	$ch,
 	array(
@@ -49,20 +57,15 @@ curl_setopt_array(
 			'Accept: application/json',
 			'x-imdb-client-name: imdb-web-next-localized',
 		),
-		CURLOPT_POSTFIELDS     => json_encode(
-			array(
-				'query'     => $query,
-				'variables' => $variables,
-			)
-		),
+		CURLOPT_POSTFIELDS     => is_string( $postData ) ? $postData : '',
 		CURLOPT_SSL_VERIFYPEER => false,
 	)
 );
 
 $response = curl_exec( $ch );
 
-$data = json_decode( $response, true );
+$data = is_string( $response ) ? json_decode( $response, true ) : null;
 
 echo '<pre>';
-print_r( $data );
+print_r( $data ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_print_r
 echo '</pre>';
