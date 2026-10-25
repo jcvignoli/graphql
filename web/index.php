@@ -32,7 +32,7 @@ declare( strict_types = 1 );
  * https://github.com/tboothman/imdbphp/tree/master/graphql
  */
 
-require __DIR__ . '/vendor/autoload.php';
+require dirname( __DIR__ ) . '/vendor/autoload.php';
 
 use jcvignoli\Graphql\Env;
 use GuzzleHttp\Client;
@@ -47,10 +47,10 @@ header( 'Content-Type: application/json' );
 // List all cached type names sorted by modification time (oldest first)
 if ( isset( $_GET['list_types'] ) ) {
 	$cacheDir    = 'cache';
-	$cachedFiles = [];
+	$cachedFiles = array();
 	if ( is_dir( $cacheDir ) ) {
-		$files     = array_diff( scandir( $cacheDir ), [ '.', '..', '.placeholder' ] );
-		$fileTimes = [];
+		$files     = array_diff( scandir( $cacheDir ), array( '.', '..', '.placeholder' ) );
+		$fileTimes = array();
 		foreach ( $files as $file ) {
 			$filePath = $cacheDir . '/' . $file;
 			if ( is_file( $filePath ) ) {
@@ -61,7 +61,12 @@ if ( isset( $_GET['list_types'] ) ) {
 		asort( $fileTimes );
 		$cachedFiles = array_keys( $fileTimes );
 	}
-	echo json_encode( [ 'status' => 'ok', 'types' => array_values( $cachedFiles ) ] );
+	echo json_encode(
+		array(
+			'status' => 'ok',
+			'types'  => array_values( $cachedFiles ),
+		)
+	);
 	return;
 }
 
@@ -75,11 +80,11 @@ if ( isset( $_GET['type'] ) && isset( $_GET['refresh'] ) ) {
 		// Upstream (IMDb) failure
 		if ( $type === null ) {
 			http_response_code( 502 );
-			$response = [
+			$response = array(
 				'status' => 'failed',
 				'type'   => $typeName,
 				'data'   => null,
-			];
+			);
 			if ( $lastError !== null ) {
 				$response['error'] = $lastError;
 			}
@@ -89,7 +94,13 @@ if ( isset( $_GET['type'] ) && isset( $_GET['refresh'] ) ) {
 			echo json_encode( $response, JSON_PRETTY_PRINT );
 			return;
 		}
-		echo json_encode( [ 'status' => 'ok', 'type' => $typeName, 'data' => $type ] );
+		echo json_encode(
+			array(
+				'status' => 'ok',
+				'type'   => $typeName,
+				'data'   => $type,
+			)
+		);
 		return;
 	}
 }
@@ -98,22 +109,22 @@ $body = file_get_contents( 'php://input' );
 
 if ( $body === false ) {
 	echo 'input couldn\'t be accessed';
-	exit(1);
+	exit( 1 );
 }
 
 writelog( $body );
 
 if ( trim( $body ) === '' ) {
 	$body = json_encode(
-		[
+		array(
 			'query' => 'query { __schema { queryType { name } } }',
-		]
+		)
 	);
 }
 
 // Override request for schema with a custom response
 if ($body !== false && strpos( $body, '__schema' ) !== false) {
-	$schemaErrors    = [];
+	$schemaErrors    = array();
 	$queryTypeError  = null;
 	$queryTypeErrors = null;
 	$queryType       = typeQuery( 'Query', false, $queryTypeError, $queryTypeErrors );
@@ -123,30 +134,30 @@ if ($body !== false && strpos( $body, '__schema' ) !== false) {
 			$schemaErrors[] = $err;
 		}
 	} elseif ( $queryTypeError !== null ) {
-		$schemaErrors[] = [ 'message' => $queryTypeError ];
+		$schemaErrors[] = array( 'message' => $queryTypeError );
 	}
 
-	$types = iterativelyFetchTypes( [ 'Query', 'Mutation' ], $schemaErrors );
+	$types = iterativelyFetchTypes( array( 'Query', 'Mutation' ), $schemaErrors );
 
-	$responseBody = [
-		'data' => [
-			'__schema' => [
-				'mutationType' => [
+	$responseBody = array(
+		'data' => array(
+			'__schema' => array(
+				'mutationType' => array(
 					'name' => 'Mutation',
-				],
-				'queryType' => $queryType,
-				'types' => $types,
-			],
-		],
-	];
+				),
+				'queryType'    => $queryType,
+				'types'        => $types,
+			),
+		),
+	);
 
 	if ( ! empty( $schemaErrors ) ) {
-		$uniqueErrors = [];
-		$seen         = [];
+		$uniqueErrors = array();
+		$seen         = array();
 		foreach ( $schemaErrors as $err ) {
 			$msg = is_array( $err ) ? ( $err['message'] ?? json_encode( $err ) ) : ( ( is_object( $err ) && isset( $err->message ) ) ? $err->message : json_encode( $err ) );
 			if ( ! isset( $seen[ $msg ] ) ) {
-				$seen[ $msg ] = true;
+				$seen[ $msg ]   = true;
 				$uniqueErrors[] = $err;
 			}
 		}
@@ -175,7 +186,7 @@ echo $res->getBody();
  * @return array<string, string>
  */
 function getForwardableHeaders(): array {
-	$headers = [];
+	$headers = array();
 
 	if ( function_exists( 'getallheaders' ) ) {
 		$all = getallheaders();
@@ -194,21 +205,21 @@ function getForwardableHeaders(): array {
 	}
 
 	// Always default required headers if not explicitly supplied by client
-	$defaultHeaders = [
+	$defaultHeaders = array(
 		'content-type'       => 'application/json',
 		'user-agent'         => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
 		'x-imdb-client-name' => 'imdb-web-next-localized',
-	];
+	);
 
 	// Forward client headers starting with 'x-imdb-', 'accept-language', or specific allowed headers
-	$forwardable = [
+	$forwardable = array(
 		'content-type',
 		'user-agent',
 		'accept-language',
 		'authorization',
-	];
+	);
 
-	$finalHeaders = [];
+	$finalHeaders = array();
 	foreach ( $headers as $k => $v ) {
 		if ( in_array( $k, $forwardable, true ) || str_starts_with( $k, 'x-imdb-' ) ) {
 			$finalHeaders[ $k ] = $v;
@@ -228,9 +239,9 @@ function getForwardableHeaders(): array {
 /** @param array<string, string>|string $body */
 function graphqlRequest( array|string $body ): ResponseInterface {
 	$client = new Client(
-		[
+		array(
 			'timeout' => 10.0,
-		]
+		)
 	);
 
 	$headers = getForwardableHeaders();
@@ -238,10 +249,10 @@ function graphqlRequest( array|string $body ): ResponseInterface {
 	return $client->request(
 		'POST',
 		'https://api.graphql.imdb.com',
-		[
+		array(
 			'body'    => is_array( $body ) ? json_encode( $body ) : $body,
 			'headers' => $headers,
-		]
+		)
 	);
 }
 
@@ -250,10 +261,10 @@ function graphqlRequest( array|string $body ): ResponseInterface {
  * @param array $schemaErrors Output/accumulated errors
  * @return stdClass[]
  */
-function iterativelyFetchTypes( array $seedTypes, array &$schemaErrors = [] ): array {
-	$todo = $seedTypes;
-	$done = [];
-	$result = [];
+function iterativelyFetchTypes( array $seedTypes, array &$schemaErrors = array() ): array {
+	$todo   = $seedTypes;
+	$done   = array();
+	$result = array();
 
 	$addToQueue = function ( $newType ) use ( &$todo, &$done ) {
 		if ( ! in_array( $newType, $done, true ) && ! in_array( $newType, $todo, true )) {
@@ -263,7 +274,7 @@ function iterativelyFetchTypes( array $seedTypes, array &$schemaErrors = [] ): a
 
 	while (count( $todo )) {
 		$typeName   = array_shift( $todo );
-		$done[]      = $typeName;
+		$done[]     = $typeName;
 		$lastError  = null;
 		$lastErrors = null;
 		$type       = typeQuery( $typeName, false, $lastError, $lastErrors );
@@ -274,7 +285,7 @@ function iterativelyFetchTypes( array $seedTypes, array &$schemaErrors = [] ): a
 					$schemaErrors[] = $err;
 				}
 			} elseif ( $lastError !== null ) {
-				$schemaErrors[] = [ 'message' => $lastError ];
+				$schemaErrors[] = array( 'message' => $lastError );
 			}
 			continue;
 		}
@@ -345,9 +356,9 @@ function iterativelyFetchTypes( array $seedTypes, array &$schemaErrors = [] ): a
 function typeQuery( string $typeName, bool $forceRefresh = false, ?string &$lastError = null, ?array &$lastErrors = null ): ?stdClass {
 	$lastError  = null;
 	$lastErrors = null;
-	$query = <<<EOF
-query Type(\$type: String!) {
-  __type(name: \$type) {
+	$query      = <<<'EOF'
+query Type($type: String!) {
+  __type(name: $type) {
     ...FullType
   }
 }
@@ -420,13 +431,13 @@ fragment TypeRef on __Type {
 }
 EOF;
 
-	$request = [
+	$request = array(
 		'operationName' => 'Type',
 		'query'         => $query,
-		'variables'     => [
+		'variables'     => array(
 			'type' => $typeName,
-		],
-	];
+		),
+	);
 
 	if ( ! is_dir( 'cache' ) ) {
 		mkdir( 'cache', 0777, true );
@@ -443,7 +454,7 @@ EOF;
 	try {
 		$res     = graphqlRequest( json_encode( $request ) );
 		$rawBody = (string) $res->getBody();
-		
+
 		$json = json_decode( $rawBody );
 		if ( isset( $json->data->__type ) && $json->data->__type !== null ) {
 			file_put_contents( $cacheFileName, $rawBody );
@@ -455,7 +466,7 @@ EOF;
 			$lastError  = $json->errors[0]->message ?? "Introspection failed for type: $typeName";
 		} else {
 			$lastError  = "Introspection failed for type: $typeName";
-			$lastErrors = [ [ 'message' => $lastError ] ];
+			$lastErrors = array( array( 'message' => $lastError ) );
 		}
 		writelog( "Introspection failed for type: $typeName. Error: " . $lastError );
 	} catch ( \Throwable $e ) {
@@ -468,11 +479,11 @@ EOF;
 				$lastError  = $json->errors[0]->message ?? $errorMsg;
 			} else {
 				$lastError  = $errorMsg;
-				$lastErrors = [ [ 'message' => $lastError ] ];
+				$lastErrors = array( array( 'message' => $lastError ) );
 			}
 		} else {
 			$lastError  = $errorMsg;
-			$lastErrors = [ [ 'message' => $lastError ] ];
+			$lastErrors = array( array( 'message' => $lastError ) );
 		}
 		writelog( "Introspection failed for type: $typeName. Error: " . $lastError );
 	}

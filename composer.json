@@ -6,10 +6,24 @@
         "vlucas/phpdotenv": "@stable",
         "webonyx/graphql-php": "@stable"
     },
+    "require-dev": {
+        "dealerdirect/phpcodesniffer-composer-installer": "@stable",
+        "squizlabs/php_codesniffer": "@stable",
+        "wp-coding-standards/wpcs": "@stable",
+        "phan/phan": "@stable",
+        "phpstan/phpstan": "@stable",
+        "phpstan/phpstan-deprecation-rules": "@stable",
+        "phpstan/phpstan-strict-rules": "@stable"
+    },
     "autoload": {
         "psr-4": {
             "GraphQL\\SchemaObject\\": "schema_object/",
-            "jcvignoli\\Graphql\\": "src/"
+            "jcvignoli\\Graphql\\": "web/class/"
+        }
+    },
+    "config": {
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true
         }
     }
 }

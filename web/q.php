@@ -1,0 +1,68 @@
+<?php
+declare( strict_types = 1 );
+/**
+ * Query test
+ */
+require_once dirname( __DIR__ ) . '/vendor/autoload.php';
+
+use jcvignoli\Graphql\Env;
+
+// Load environment variables
+Env::load( __DIR__ );
+$endpoint = $_ENV['LOCAL_HOST'] ?? getenv( 'LOCAL_HOST' ) ?: null;
+
+$query = '
+query GetTitleReleaseDates($id: ID!) {
+  title(id: $id) {
+    releaseDates(first: 100) {
+      edges {
+        node {
+          day
+          month
+          year
+          country {
+            id
+            text
+          }
+          attributes {
+            text
+          }
+        }
+      }
+    }
+  }
+}';
+
+$variables = array(
+	'id' => 'tt0120737',
+);
+
+$ch = curl_init( $endpoint );
+curl_setopt_array(
+	$ch,
+	array(
+		CURLOPT_RETURNTRANSFER => true,
+		CURLOPT_POST           => true,
+		CURLOPT_HTTPHEADER     => array(
+			'Content-Type: application/json',
+			'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+			'Accept: application/json',
+			'x-imdb-client-name: imdb-web-next-localized',
+		),
+		CURLOPT_POSTFIELDS     => json_encode(
+			array(
+				'query'     => $query,
+				'variables' => $variables,
+			)
+		),
+		CURLOPT_SSL_VERIFYPEER => false,
+	)
+);
+
+$response = curl_exec( $ch );
+
+$data = json_decode( $response, true );
+
+echo '<pre>';
+print_r( $data );
+echo '</pre>';

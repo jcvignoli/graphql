@@ -2,7 +2,7 @@ data/*
 !data/.placeholder
 vendor*
 *.env
-log.txt
+*log.txt
 node_modules
 tmp
 composer.lock

@@ -1,0 +1,11 @@
+# Config for local and git environment
+includes:
+    - vendor/phpstan/phpstan/conf/bleedingEdge.neon
+    - vendor/phpstan/phpstan-strict-rules/rules.neon
+    - vendor/phpstan/phpstan-deprecation-rules/rules.neon
+parameters:
+    level: 8 #max or 9 for highest level
+    scanFiles:
+    tmpDir: tmp/cache/phpstan
+    paths:
+        - web

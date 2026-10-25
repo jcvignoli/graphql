@@ -12,7 +12,7 @@ Env::load( __DIR__ );
 
 echo "Building schema.graphql from cached types...\n";
 
-$cacheFiles = glob(__DIR__ . '/cache/*');
+$cacheFiles = glob(__DIR__ . '/web/cache/*');
 
 if (empty($cacheFiles)) {
     die("Error: No cached files found in cache/. Run the crawler first!\n");

@@ -1,11 +1,11 @@
 import fs from "fs";
 import path from "path";
-import { QUERY_SUITE } from "./scripts/queries";		// Check queries in /queries
+import { QUERY_SUITE } from "../scripts/queries";		// Check queries in /queries
 import { existsSync } from 'node:fs';				// synchronous check
-import { sendAlertEmail } from "./scripts/send-email";		// Sending emails script
+import { sendAlertEmail } from "../scripts/send-email";		// Sending emails script
 import { styleText } from 'node:util';				// Change styles/colors in console.log()
 
-const BASELINE_FILE = path.join(__dirname, "data/imdb-baseline-all.json");
+const BASELINE_FILE = path.join(__dirname, "../data/imdb-baseline-all.json");
 
 function extractShape(data: unknown): unknown {
   if (data === null) return "null";
