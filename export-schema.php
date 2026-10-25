@@ -1,5 +1,14 @@
 <?php
 declare( strict_types = 1 );
+/**
+ * Creates human-readable GraphQL Schema Definition Language schema.graphql
+ */
+require __DIR__ . '/vendor/autoload.php';
+
+use jcvignoli\Graphql\Env;
+
+// Load environment variables
+Env::load( __DIR__ );
 
 echo "Building schema.graphql from cached types...\n";
 

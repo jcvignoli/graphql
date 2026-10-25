@@ -36,6 +36,7 @@ require __DIR__ . '/vendor/autoload.php';
 
 use jcvignoli\Graphql\Env;
 use GuzzleHttp\Client;
+use GuzzleHttp\Exception\RequestException;
 use Psr\Http\Message\ResponseInterface;
 
 // Load environment variables
@@ -459,7 +460,7 @@ EOF;
 		writelog( "Introspection failed for type: $typeName. Error: " . $lastError );
 	} catch ( \Throwable $e ) {
 		$errorMsg = $e->getMessage();
-		if ( method_exists( $e, 'hasResponse' ) && $e->hasResponse() && $e->getResponse() !== null ) {
+		if ( $e instanceof RequestException && $e->hasResponse() && $e->getResponse() !== null ) {
 			$resBody = (string) $e->getResponse()->getBody();
 			$json    = json_decode( $resBody );
 			if ( isset( $json->errors ) && is_array( $json->errors ) && count( $json->errors ) > 0 ) {

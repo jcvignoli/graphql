@@ -59,7 +59,7 @@ async function runQuerySuite() {
     console.log(`🔍 Checking GraphQL operation: ${item.name}...`);
 
     try {
-      const response = await fetch("https://graphql.imdb.com", {
+     const response = await fetch("https://api.graphql.imdb.com", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
