@@ -1,7 +1,8 @@
 {
   "name": "GraphQL monitor",
   "scripts": {
-    "start": "npx tsx scripts/inspect.ts"
+    "start": "npx tsx scripts/inspect.ts",
+    "refresh-cache": "npx tsx scripts/refresh-cache.ts"
   },
   "dependencies": {
     "graphql": "*",
